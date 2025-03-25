@@ -1,15 +1,14 @@
 require("dotenv").config();
 const TelegramBot = require('node-telegram-bot-api');
 
-console.log("Bot Token:", process.env.BOT_TOKEN); // Debugging step
+// Debugging: Print token value
+console.log("Bot Token:", process.env.BOT_TOKEN);
 
-const token = process.env.BOT_TOKEN;
-if (!token) {
-    console.error("Error: BOT_TOKEN is missing!");
-    process.exit(1); // Stop execution if no token is found
+if (!process.env.BOT_TOKEN) {
+    throw new Error("BOT_TOKEN is missing!");
 }
 
-const bot = new TelegramBot(token, { polling: true });
+const bot = new TelegramBot(process.env.BOT_TOKEN, { polling: true });
 
 bot.onText(/\/start/, (msg) => {
     bot.sendMessage(msg.chat.id, "Hello! I am your bot.");
