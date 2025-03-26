@@ -65,22 +65,19 @@ bot.onText(/\/help/, (msg) => {
     );
 });
 
-// ➤ /menu Command
+
 // ➤ /menu Command
 bot.onText(/\/menu/, (msg) => {
     const chatId = msg.chat.id;
-    const options = {
-        reply_markup: {
-            keyboard: [
-                ["🎬 Search Movie", "🎵 Download Music"],
-                ["🔍 Visit Google", "ℹ️ Help"],
-                ["❌ Exit"]
-            ],
-            resize_keyboard: true,
-            one_time_keyboard: false
-        }
-    };
-    bot.sendMessage(chatId, "📌 Choose an option:", options);
+    const menuText = 
+        "📌 *Main Menu*\n\n" +
+        "🎬 /movie <name> - Search for a movie\n" +
+        "🎵 /music <song name> - Download music\n" +
+        "🔍 [Visit Google](https://www.google.com) - Open Google\n" +
+        "ℹ️ /help - Show help\n" +
+        "❌ /exit - Exit the bot\n";
+    
+    bot.sendMessage(chatId, menuText, { parse_mode: "Markdown", disable_web_page_preview: true });
 });
 
 // ➤ Handle "Visit Google" Click
