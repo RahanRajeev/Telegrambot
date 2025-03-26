@@ -1,9 +1,9 @@
 require("dotenv").config();
 const TelegramBot = require("node-telegram-bot-api");
 const axios = require("axios");
-const { exec } = require("child_process");
 const fs = require("fs");
 const path = require("path");
+const ytdlp = require("yt-dlp-exec"); // ✅ Using yt-dlp-exec for Railway compatibility
 
 // ✅ Load environment variables
 const botToken = process.env.BOT_TOKEN;
@@ -21,7 +21,6 @@ if (!movieApiKey) {
 
 // ✅ Initialize Telegram bot
 const bot = new TelegramBot(botToken, { polling: true });
-
 
 /* =============================
   🎬 MOVIE SEARCH FUNCTION
@@ -97,40 +96,26 @@ async function getMusic(chatId, songName) {
 
     bot.sendMessage(chatId, `🎵 Searching for "${songName}"...`);
 
-    // Check if yt-dlp is installed
-    exec("yt-dlp --version", (err) => {
-        if (err) {
-            bot.sendMessage(chatId, "❌ Error: yt-dlp is not installed. Please install it to use this feature.");
+    try {
+        await ytdlp(`ytsearch1:${songName}`, {
+            extractAudio: true,
+            audioFormat: "mp3",
+            output: outputFilePath
+        });
+
+        if (!fs.existsSync(outputFilePath)) {
+            bot.sendMessage(chatId, "❌ Error: File not found after download.");
             return;
         }
-        
-        // Use yt-dlp to get the best audio format from YouTube
-        const command = `yt-dlp -x --audio-format mp3 --output \"${outputFilePath}\" \"ytsearch1:${songName}\"`;
 
-        exec(command, (error, stdout, stderr) => {
-            if (error) {
-                console.error("Error downloading music:", error);
-                bot.sendMessage(chatId, "❌ Sorry, could not fetch the song.");
-                return;
-            }
-
-            if (!fs.existsSync(outputFilePath)) {
-                bot.sendMessage(chatId, "❌ Error: File not found after download.");
-                return;
-            }
-
-            // Send the audio file to the user
-            bot.sendAudio(chatId, fs.createReadStream(outputFilePath), {
-                caption: `🎶 Here is your song: *${songName}*`,
-                parse_mode: "Markdown"
-            }).then(() => {
-                fs.unlinkSync(outputFilePath); // Delete the file after sending
-            }).catch(err => {
-                console.error("Error sending music:", err);
-                bot.sendMessage(chatId, "❌ Failed to send the song.");
-            });
-        });
-    });
+        bot.sendAudio(chatId, fs.createReadStream(outputFilePath), {
+            caption: `🎶 Here is your song: *${songName}*`,
+            parse_mode: "Markdown"
+        }).then(() => fs.unlinkSync(outputFilePath)); // ✅ Delete file after sending
+    } catch (error) {
+        console.error("Error downloading music:", error);
+        bot.sendMessage(chatId, "❌ Sorry, could not fetch the song.");
+    }
 }
 
 // ➤ /music Command
