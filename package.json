@@ -7,6 +7,7 @@
     "postinstall": "apt-get update && apt-get install -y python3-pip && pip3 install yt-dlp",
     "start": "node Telegrambot.js"
   },
+  
   "keywords": [],
   "author": "",
   "license": "ISC",

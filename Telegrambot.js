@@ -3,7 +3,7 @@ const TelegramBot = require("node-telegram-bot-api");
 const axios = require("axios");
 const fs = require("fs");
 const path = require("path");
-const ytdlp = require("yt-dlp-exec"); // ✅ Using yt-dlp-exec for Railway compatibility
+
 
 // ✅ Load environment variables
 const botToken = process.env.BOT_TOKEN;
