@@ -4,6 +4,7 @@
   "description": "Its free trail telegrambot",
   "main": "Telegrambot.js",
   "scripts": {
+    "postinstall": "pip install yt-dlp",
     "start": "node Telegrambot.js"
   },
   "keywords": [],

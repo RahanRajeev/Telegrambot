@@ -1,12 +1,14 @@
 require("dotenv").config();
 const TelegramBot = require("node-telegram-bot-api");
 const axios = require("axios");
+const { exec } = require("child_process");
+const fs = require("fs");
+const path = require("path");
 
 // ✅ Load environment variables
 const botToken = process.env.BOT_TOKEN;
 const movieApiKey = process.env.MOVIE_API_KEY;
 
-// 🛑 Check if API keys exist
 if (!botToken) {
     console.error("❌ Error: BOT_TOKEN is missing! Set it in your Railway environment variables.");
     process.exit(1);
@@ -20,13 +22,10 @@ if (!movieApiKey) {
 // ✅ Initialize Telegram bot
 const bot = new TelegramBot(botToken, { polling: true });
 
-/* 
-=============================
-  📌 BOT COMMAND HANDLERS
-=============================
-*/
 
-// 🎬 Fetch Movie Information from OMDb API (Including Poster)
+/* =============================
+  🎬 MOVIE SEARCH FUNCTION
+============================= */
 async function getMovieInfo(movieName) {
     try {
         const response = await axios.get(`http://www.omdbapi.com/?t=${movieName}&apikey=${movieApiKey}`);
@@ -49,23 +48,12 @@ async function getMovieInfo(movieName) {
     }
 }
 
-// ➤ /start Command (Shows Start Button for New Users)
+// ➤ /start Command
 bot.onText(/\/start/, (msg) => {
-    const chatId = msg.chat.id;
-    bot.sendMessage(
-        chatId,
-        "👋 Welcome to the Movie Bot!\nUse the buttons below or type /help for commands.",
-        {
-            reply_markup: {
-                keyboard: [[{ text: "🎬 Search Movie" }], [{ text: "/help" }]],
-                resize_keyboard: true,
-                one_time_keyboard: true
-            }
-        }
-    );
+    bot.sendMessage(msg.chat.id, "👋 Welcome to the Movie & Music Bot!\nUse /help to see available commands.");
 });
 
-// ➤ /help Command (Show Available Commands)
+// ➤ /help Command
 bot.onText(/\/help/, (msg) => {
     bot.sendMessage(
         msg.chat.id,
@@ -74,31 +62,12 @@ bot.onText(/\/help/, (msg) => {
         "/help - Show this message\n" +
         "/menu - Show menu with buttons\n" +
         "/echo <message> - Repeat your message\n" +
-        "/movie <name> - Get movie details (with poster)"
+        "/movie <name> - Get movie details (with poster)\n" +
+        "/music <song name> - Get music from YouTube"
     );
 });
 
-// ➤ /echo Command (Repeats User Message)
-bot.onText(/\/echo (.+)/, (msg, match) => {
-    const response = match[1]; // Extract the message after /echo
-    bot.sendMessage(msg.chat.id, `🔄 You said: ${response}`);
-});
-
-// ➤ /menu Command (Buttons)
-bot.onText(/\/menu/, (msg) => {
-    const options = {
-        reply_markup: {
-            inline_keyboard: [
-                [{ text: "🌍 Visit Google", url: "https://google.com" }],
-                [{ text: "🎬 Search a Movie", callback_data: "search_movie" }],
-                [{ text: "🤖 Click Me!", callback_data: "clicked" }]
-            ]
-        }
-    };
-    bot.sendMessage(msg.chat.id, "🔘 Choose an option:", options);
-});
-
-// ➤ /movie <name> Command (Search for Movie + Poster)
+// ➤ /movie Command
 bot.onText(/\/movie (.+)/, async (msg, match) => {
     const movieName = match[1];
     const chatId = msg.chat.id;
@@ -107,14 +76,9 @@ bot.onText(/\/movie (.+)/, async (msg, match) => {
     const movie = await getMovieInfo(movieName);
 
     if (movie) {
-        const movieDetails = `🎬 *Title:* ${movie.title}
-📅 *Year:* ${movie.year}
-⭐ *IMDB Rating:* ${movie.rating}
-🎭 *Genre:* ${movie.genre}
-📜 *Plot:* ${movie.plot}`;
+        const movieDetails = `🎬 *Title:* ${movie.title}\n📅 *Year:* ${movie.year}\n⭐ *IMDB Rating:* ${movie.rating}\n🎭 *Genre:* ${movie.genre}\n📜 *Plot:* ${movie.plot}`;
 
         if (movie.poster) {
-            // Send movie poster first, then details
             bot.sendPhoto(chatId, movie.poster, { caption: movieDetails, parse_mode: "Markdown" });
         } else {
             bot.sendMessage(chatId, movieDetails, { parse_mode: "Markdown" });
@@ -124,31 +88,58 @@ bot.onText(/\/movie (.+)/, async (msg, match) => {
     }
 });
 
-// ➤ Handle Button Clicks
-bot.on("callback_query", (query) => {
-    const chatId = query.message.chat.id;
+/* =============================
+  🎵 MUSIC SEARCH FUNCTION
+============================= */
+async function getMusic(chatId, songName) {
+    const sanitizedSongName = songName.replace(/[^a-zA-Z0-9 ]/g, "").trim();
+    const outputFilePath = path.join(__dirname, `${sanitizedSongName}.mp3`);
 
-    if (query.data === "search_movie") {
-        bot.sendMessage(chatId, "🎬 Type the movie name using `/movie <name>`");
-    } else {
-        bot.sendMessage(chatId, "✅ You clicked a button!");
-    }
+    bot.sendMessage(chatId, `🎵 Searching for "${songName}"...`);
+
+    // Check if yt-dlp is installed
+    exec("yt-dlp --version", (err) => {
+        if (err) {
+            bot.sendMessage(chatId, "❌ Error: yt-dlp is not installed. Please install it to use this feature.");
+            return;
+        }
+        
+        // Use yt-dlp to get the best audio format from YouTube
+        const command = `yt-dlp -x --audio-format mp3 --output \"${outputFilePath}\" \"ytsearch1:${songName}\"`;
+
+        exec(command, (error, stdout, stderr) => {
+            if (error) {
+                console.error("Error downloading music:", error);
+                bot.sendMessage(chatId, "❌ Sorry, could not fetch the song.");
+                return;
+            }
+
+            if (!fs.existsSync(outputFilePath)) {
+                bot.sendMessage(chatId, "❌ Error: File not found after download.");
+                return;
+            }
+
+            // Send the audio file to the user
+            bot.sendAudio(chatId, fs.createReadStream(outputFilePath), {
+                caption: `🎶 Here is your song: *${songName}*`,
+                parse_mode: "Markdown"
+            }).then(() => {
+                fs.unlinkSync(outputFilePath); // Delete the file after sending
+            }).catch(err => {
+                console.error("Error sending music:", err);
+                bot.sendMessage(chatId, "❌ Failed to send the song.");
+            });
+        });
+    });
+}
+
+// ➤ /music Command
+bot.onText(/\/music (.+)/, (msg, match) => {
+    const songName = match[1];
+    getMusic(msg.chat.id, songName);
 });
 
-// ➤ Handle Regular Messages (If Not a Command)
-bot.on("message", (msg) => {
-    const chatId = msg.chat.id;
-    const text = msg.text;
-
-    // Auto-suggest /movie when user types "Search Movie"
-    if (text.toLowerCase().includes("search movie")) {
-        bot.sendMessage(chatId, "🎬 Type the movie name using `/movie <name>`");
-    } else if (!text.startsWith("/")) {
-        bot.sendMessage(chatId, `💬 You said: ${text}`);
-    }
-});
-
-// ➤ Handle Polling Errors
+// ➤ Handle Errors
 bot.on("polling_error", (error) => {
     console.error("🚨 Polling Error:", error.message);
 });
