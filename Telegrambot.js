@@ -4,7 +4,6 @@ const axios = require("axios");
 const fs = require("fs");
 const path = require("path");
 
-
 // ✅ Load environment variables
 const botToken = process.env.BOT_TOKEN;
 const movieApiKey = process.env.MOVIE_API_KEY;
@@ -66,6 +65,25 @@ bot.onText(/\/help/, (msg) => {
     );
 });
 
+// ➤ /menu Command
+bot.onText(/\/menu/, (msg) => {
+    const chatId = msg.chat.id;
+    const options = {
+        reply_markup: {
+            keyboard: [["🎬 Search Movie", "🎵 Download Music"], ["ℹ️ Help", "❌ Exit"]],
+            resize_keyboard: true,
+            one_time_keyboard: false
+        }
+    };
+    bot.sendMessage(chatId, "📌 Choose an option:", options);
+});
+
+// ➤ /echo Command
+bot.onText(/\/echo (.+)/, (msg, match) => {
+    const response = match[1];
+    bot.sendMessage(msg.chat.id, `🔁 You said: ${response}`);
+});
+
 // ➤ /movie Command
 bot.onText(/\/movie (.+)/, async (msg, match) => {
     const movieName = match[1];
@@ -85,43 +103,6 @@ bot.onText(/\/movie (.+)/, async (msg, match) => {
     } else {
         bot.sendMessage(chatId, "❌ Movie not found!");
     }
-});
-
-/* =============================
-  🎵 MUSIC SEARCH FUNCTION
-============================= */
-async function getMusic(chatId, songName) {
-    const sanitizedSongName = songName.replace(/[^a-zA-Z0-9 ]/g, "").trim();
-    const outputFilePath = path.join(__dirname, `${sanitizedSongName}.mp3`);
-
-    bot.sendMessage(chatId, `🎵 Searching for "${songName}"...`);
-
-    try {
-        await ytdlp(`ytsearch1:${songName}`, {
-            extractAudio: true,
-            audioFormat: "mp3",
-            output: outputFilePath
-        });
-
-        if (!fs.existsSync(outputFilePath)) {
-            bot.sendMessage(chatId, "❌ Error: File not found after download.");
-            return;
-        }
-
-        bot.sendAudio(chatId, fs.createReadStream(outputFilePath), {
-            caption: `🎶 Here is your song: *${songName}*`,
-            parse_mode: "Markdown"
-        }).then(() => fs.unlinkSync(outputFilePath)); // ✅ Delete file after sending
-    } catch (error) {
-        console.error("Error downloading music:", error);
-        bot.sendMessage(chatId, "❌ Sorry, could not fetch the song.");
-    }
-}
-
-// ➤ /music Command
-bot.onText(/\/music (.+)/, (msg, match) => {
-    const songName = match[1];
-    getMusic(msg.chat.id, songName);
 });
 
 // ➤ Handle Errors
