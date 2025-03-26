@@ -66,17 +66,32 @@ bot.onText(/\/help/, (msg) => {
 });
 
 // ➤ /menu Command
+// ➤ /menu Command
 bot.onText(/\/menu/, (msg) => {
     const chatId = msg.chat.id;
     const options = {
         reply_markup: {
-            keyboard: [["🎬 Search Movie", "🎵 Download Music"], ["ℹ️ Help", "❌ Exit"]],
+            keyboard: [
+                ["🎬 Search Movie", "🎵 Download Music"],
+                ["🔍 Visit Google", "ℹ️ Help"],
+                ["❌ Exit"]
+            ],
             resize_keyboard: true,
             one_time_keyboard: false
         }
     };
     bot.sendMessage(chatId, "📌 Choose an option:", options);
 });
+
+// ➤ Handle "Visit Google" Click
+bot.onText(/🔍 Visit Google/, (msg) => {
+    bot.sendMessage(msg.chat.id, "🌍 Click below to visit Google:", {
+        reply_markup: {
+            inline_keyboard: [[{ text: "Open Google 🔗", url: "https://www.google.com" }]]
+        }
+    });
+});
+
 
 // ➤ /echo Command
 bot.onText(/\/echo (.+)/, (msg, match) => {
