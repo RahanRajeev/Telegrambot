@@ -4,14 +4,13 @@
   "description": "Its free trail telegrambot",
   "main": "Telegrambot.js",
   "scripts": {
-    "postinstall": "pip install yt-dlp",
+    "postinstall": "apt-get update && apt-get install -y python3-pip && pip3 install yt-dlp",
     "start": "node Telegrambot.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "yt-dlp-exec": "^1.0.3",
     "axios": "^1.8.4",
     "dotenv": "^16.4.7",
     "node-telegram-bot-api": "^0.66.0"
